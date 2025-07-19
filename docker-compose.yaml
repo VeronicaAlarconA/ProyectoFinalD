@@ -1,8 +1,8 @@
 version: "3.8"
 
 services:
-  fastapi-app:
-    image: your-nexus-domain:8083/fastapi_app:latest
+  app:
+    image: ec2-18-206-163-210.compute-1.amazonaws.com:8083/docker-hosted/fastapi_app:latest
     container_name: fastapi_app
     ports:
       - "5000:5000"
@@ -32,9 +32,15 @@ services:
     container_name: nexus
     ports:
       - "8081:8081"
+      - "8083:8083"
+    volumes:
+      - nexus-data:/nexus-data
     networks:
       - app-net
 
 networks:
   app-net:
     driver: bridge
+
+volumes:
+  nexus-data:
