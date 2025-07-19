@@ -1,46 +1,28 @@
 version: "3.8"
-
 services:
   app:
-    image: ec2-18-206-163-210.compute-1.amazonaws.com:8083/docker-hosted/fastapi_app:latest
-    container_name: fastapi_app
+    image: fastapi_app:latest
     ports:
       - "5000:5000"
     networks:
       - app-net
-    depends_on:
-      - nexus
 
   prometheus:
     image: prom/prometheus
-    container_name: prometheus
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - app-net
-    depends_on:
-      - app
 
   grafana:
     image: grafana/grafana
-    container_name: grafana
     ports:
       - "3000:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
     networks:
       - app-net
-    depends_on:
-      - prometheus
-
-  
 
 networks:
   app-net:
     driver: bridge
-
-volumes:
-  nexus-data:
-  grafana-data:
