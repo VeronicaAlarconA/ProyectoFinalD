@@ -1,4 +1,4 @@
-name: CI/CD 
+name: CI/CD sin Nexus - Deploy directo a EC2
 
 on:
   push:
@@ -10,32 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout del código
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Crear archivo .pem
+    - name: Set up SSH key from PEM secret
       run: |
-        echo "${{ secrets.EC2_PEM_KEY }}" > key.pem
-        chmod 600 key.pem
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY_PEM }}" > ~/.ssh/id_rsa.pem
+        chmod 600 ~/.ssh/id_rsa.pem
 
-    - name: Añadir EC2 a
+    - name: Add EC2 to known_hosts
       run: |
+        mkdir -p ~/.ssh
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Enviar proyecto a EC2 con rsync
+    - name: Sync project to EC2
       run: |
-        rsync -avz \
-          --exclude='.git' \
-          --exclude='.github' \
-          -e "ssh -i key.pem -o StrictHostKeyChecking=no" \
-          ./ ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/store-api-devops
+        rsync -avz --exclude='.git' --exclude='.github' -e "ssh -i ~/.ssh/id_rsa.pem -o StrictHostKeyChecking=no" ./ ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/store-api-devops
 
-    - name: Desplegar en EC2
+    - name: Deploy on EC2
       run: |
-        ssh -i key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+        ssh -i ~/.ssh/id_rsa.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
           cd /home/ec2-user/store-api-devops
           echo "📦 Deteniendo contenedores anteriores..."
           docker-compose down || true
-          echo "🐳 Construyendo e iniciando contenedores..."
+          echo "🐳 Construyendo imagen local..."
           docker-compose up -d --build
         EOF
