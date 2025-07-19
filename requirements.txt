@@ -3,3 +3,4 @@ uvicorn
 pydantic
 prometheus_client
 pytest
+httpx
