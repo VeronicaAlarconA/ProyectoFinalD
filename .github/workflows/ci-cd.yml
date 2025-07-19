@@ -1,3 +1,11 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+
 jobs:
   ci_cd_deploy:
     runs-on: ubuntu-latest
@@ -54,7 +62,8 @@ jobs:
         run: |
           ssh ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
           cd /home/ubuntu/store-api-devops
+          docker login http://$NEXUS_HOST:8083 -u $NEXUS_USERNAME -p $NEXUS_PASSWORD
+          docker pull $NEXUS_HOST:8083/docker-hosted/fastapi_app:latest
           docker-compose down
-          docker-compose pull
           docker-compose up -d --build
           EOF
