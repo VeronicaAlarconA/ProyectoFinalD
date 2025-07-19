@@ -25,11 +25,12 @@ jobs:
 
     - name: Build Docker image
       run: |
-       docker build -t ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi_app:latest .
+        docker build -t ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi_app:latest .
 
     - name: Push Docker image to Nexus
       run: |
         docker push ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi_app:latest
+
 
 
     - name: Set up SSH
