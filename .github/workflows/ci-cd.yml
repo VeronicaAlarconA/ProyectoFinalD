@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     env:
@@ -21,9 +21,14 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
+    - name: Allow Insecure Nexus Docker Registry
+      run: |
+        echo '{ "insecure-registries":["${{ env.NEXUS_HOST }}"] }' | sudo tee /etc/docker/daemon.json
+        sudo systemctl restart docker
+
     - name: Log in to Nexus Docker Registry
       run: |
-        echo "${{ secrets.NEXUS_PASSWORD }}" | docker login http://$NEXUS_HOST -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+        echo "${{ secrets.NEXUS_PASSWORD }}" | docker login http://${{ env.NEXUS_HOST }} -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
 
     - name: Build Docker image
       run: |
@@ -34,7 +39,7 @@ jobs:
         docker tag $IMAGE_NAME $NEXUS_HOST/$NEXUS_REPO/$IMAGE_NAME:latest
         docker push $NEXUS_HOST/$NEXUS_REPO/$IMAGE_NAME:latest
 
-    - name: Set up SSH for EC2
+    - name: Set up SSH
       uses: webfactory/ssh-agent@v0.7.0
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
@@ -50,12 +55,9 @@ jobs:
     - name: Deploy on EC2
       run: |
         ssh ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          export NEXUS_HOST=ec2-18-206-163-210.compute-1.amazonaws.com:8083
-          export IMAGE=fastapi_app
-          export REPO=docker-hosted
-          docker login http://$NEXUS_HOST -u "${{ secrets.NEXUS_USERNAME }}" -p "${{ secrets.NEXUS_PASSWORD }}"
-          docker pull $NEXUS_HOST/$REPO/$IMAGE:latest
-          cd /home/ubuntu/store-api-devops
-          docker-compose down || true
-          docker-compose up -d --build
+        cd /home/ubuntu/store-api-devops
+        echo "$NEXUS_PASSWORD" | docker login http://ec2-18-206-163-210.compute-1.amazonaws.com:8083 -u "$NEXUS_USERNAME" --password-stdin
+        docker pull ec2-18-206-163-210.compute-1.amazonaws.com:8083/docker-hosted/fastapi_app:latest
+        docker-compose down
+        docker-compose up -d --build
         EOF
