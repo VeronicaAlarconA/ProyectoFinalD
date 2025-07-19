@@ -1,6 +1,6 @@
-fastapi
-uvicorn
-pydantic
-prometheus_client
-pytest
-httpx
+fastapi==0.95.2
+uvicorn[standard]==0.22.0
+pydantic==1.10.7
+prometheus_client==0.16.0
+pytest==7.3.1
+httpx==0.24.1

@@ -8,6 +8,8 @@ services:
       - "5000:5000"
     networks:
       - app-net
+    depends_on:
+      - nexus
 
   prometheus:
     image: prom/prometheus
@@ -18,21 +20,26 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - app-net
+    depends_on:
+      - app
 
   grafana:
     image: grafana/grafana
     container_name: grafana
     ports:
       - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
     networks:
       - app-net
+    depends_on:
+      - prometheus
 
   nexus:
     image: sonatype/nexus3
     container_name: nexus
     ports:
       - "8081:8081"
-      - "8083:8083"
     volumes:
       - nexus-data:/nexus-data
     networks:
@@ -44,3 +51,4 @@ networks:
 
 volumes:
   nexus-data:
+  grafana-data:
