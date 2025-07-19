@@ -37,13 +37,13 @@ jobs:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           NEXUS_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          echo $NEXUS_PASSWORD | docker login http://$NEXUS_HOST:8083 -u $NEXUS_USERNAME --password-stdin
+          echo $NEXUS_PASSWORD | docker login http://$NEXUS_HOST:8081 -u $NEXUS_USERNAME --password-stdin
 
       - name: Tag and Push to Nexus
         env:
           NEXUS_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          docker tag fastapi_app $NEXUS_HOST:8083/fastapi_app:latest
+          docker tag fastapi_app $NEXUS_HOST:8081/fastapi_app:latest
           docker push $NEXUS_HOST:8081/fastapi_app:latest
 
 
