@@ -42,18 +42,18 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
       - name: Build Docker image
         run: |
-          IMAGE_NAME=ghcr.io/veronicalarcona/proyectofinald
+          IMAGE_NAME=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
           IMAGE_TAG=${{ github.sha }}
           docker build -t $IMAGE_NAME:$IMAGE_TAG .
           docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
 
       - name: Push Docker image
         run: |
-          IMAGE_NAME=ghcr.io/veronicalarcona/proyectofinald
+          IMAGE_NAME=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
           IMAGE_TAG=${{ github.sha }}
           docker push $IMAGE_NAME:$IMAGE_TAG
           docker push $IMAGE_NAME:latest
@@ -70,4 +70,9 @@ jobs:
 
       - name: Deploy to EC2 via SSH
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+            docker pull ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]'):latest
+            docker stop fastapi-app || true
+            docker rm fastapi-app || true
+            docker run -d --name fastapi-app -p 80:80 ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]'):latest
+          EOF
