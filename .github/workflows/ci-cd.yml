@@ -1,4 +1,4 @@
-name: Build and push Docker image to Nexus and deploy on EC2
+name: Build, Test, Push Docker image to Nexus and Deploy on EC2
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     env:
@@ -16,41 +16,40 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # 🔍 Configurar Python y ejecutar pruebas automáticas
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
-    - name: Install dependencies for testing
+    - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install pytest
 
-    - name: Run automated tests with pytest
+    - name: Run tests
+      run: pytest tests/
+
+    - name: Allow insecure Nexus registry (HTTP)
       run: |
-        pytest tests/ --tb=short -v
+        echo '{ "insecure-registries":["${{ secrets.NEXUS_URL }}"] }' | sudo tee /etc/docker/daemon.json
+        sudo systemctl restart docker
 
-    # 🐳 Configuración para Docker Buildx
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    # 🔐 Login en Nexus
     - name: Log in to Nexus Docker Registry
       run: |
         echo "${{ secrets.NEXUS_PASSWORD }}" | docker login http://${{ secrets.NEXUS_URL }} -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
 
-    # 🏗️ Build de la imagen Docker
     - name: Build Docker image
       run: |
         docker build -t ${{ secrets.NEXUS_URL }}/docker-hosted/${{ env.IMAGE_NAME }}:latest .
 
-    # 🚀 Push a Nexus
     - name: Push Docker image to Nexus
       run: |
         docker push ${{ secrets.NEXUS_URL }}/docker-hosted/${{ env.IMAGE_NAME }}:latest
 
-    # 🔑 Acceso por SSH a EC2
     - name: Set up SSH agent
       uses: webfactory/ssh-agent@v0.7.0
       with:
@@ -60,12 +59,10 @@ jobs:
       run: |
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    # 📁 Enviar archivos necesarios a EC2
     - name: Copy necessary project files to EC2
       run: |
         rsync -avz --exclude='.git' --exclude='.github' -e ssh ./ ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/store-api-devops
 
-    # ⚙️ Desplegar en EC2 usando Docker Compose
     - name: Deploy on EC2
       env:
         NEXUS_URL: ${{ secrets.NEXUS_URL }}
@@ -73,21 +70,21 @@ jobs:
         NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
       run: |
         ssh ubuntu@${{ secrets.EC2_HOST }} << EOF
-          export NEXUS_URL=$NEXUS_URL
-          export NEXUS_USERNAME=$NEXUS_USERNAME
-          export NEXUS_PASSWORD=$NEXUS_PASSWORD
+          export NEXUS_URL=\$NEXUS_URL
+          export NEXUS_USERNAME=\$NEXUS_USERNAME
+          export NEXUS_PASSWORD=\$NEXUS_PASSWORD
 
           cd /home/ubuntu/store-api-devops
 
-          echo "➡️ Cerrando contenedores existentes..."
+          echo "🛑 Deteniendo contenedores anteriores..."
           docker-compose down || true
 
           echo "🔐 Iniciando sesión en Nexus..."
           docker login http://\$NEXUS_URL -u \$NEXUS_USERNAME -p \$NEXUS_PASSWORD
 
-          echo "📥 Descargando la última imagen..."
+          echo "📥 Descargando nueva imagen..."
           docker pull \$NEXUS_URL/docker-hosted/${{ env.IMAGE_NAME }}:latest
 
-          echo "🚀 Iniciando aplicación..."
+          echo "🚀 Desplegando aplicación..."
           docker-compose up -d --build
         EOF
