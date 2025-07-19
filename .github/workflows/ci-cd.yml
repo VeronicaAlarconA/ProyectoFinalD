@@ -21,7 +21,8 @@ jobs:
 
     - name: Log in to Nexus Docker Registry
       run: |
-        echo "${{ secrets.NEXUS_PASSWORD }}" | docker login http://${{ secrets.NEXUS_HOST }}:8083 -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+        docker login http://${{ secrets.NEXUS_HOST }}:8083 -u "${{ secrets.NEXUS_USERNAME }}" -p "${{ secrets.NEXUS_PASSWORD }}"
+
 
 
     - name: Build Docker image
