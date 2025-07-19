@@ -1,4 +1,4 @@
-
+name: Build and push Docker image to Nexus
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
 
     - name: Log in to Nexus Docker Registry
       run: |
-        echo "$NEXUS_PASSWORD" | docker login http://$NEXUS_HOST -u "$NEXUS_USERNAME" --password-stdin
+        echo "${{ secrets.NEXUS_PASSWORD }}" | docker login http://$NEXUS_HOST -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
 
     - name: Build Docker image
       run: |
@@ -34,7 +34,7 @@ jobs:
         docker tag $IMAGE_NAME $NEXUS_HOST/$NEXUS_REPO/$IMAGE_NAME:latest
         docker push $NEXUS_HOST/$NEXUS_REPO/$IMAGE_NAME:latest
 
-    - name: Set up SSH
+    - name: Set up SSH for EC2
       uses: webfactory/ssh-agent@v0.7.0
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
@@ -50,9 +50,12 @@ jobs:
     - name: Deploy on EC2
       run: |
         ssh ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-        cd /home/ubuntu/store-api-devops
-        docker login http://$NEXUS_HOST -u $NEXUS_USERNAME -p $NEXUS_PASSWORD
-        docker pull $NEXUS_HOST/$NEXUS_REPO/$IMAGE_NAME:latest
-        docker-compose down
-        docker-compose up -d --build
+          export NEXUS_HOST=ec2-18-206-163-210.compute-1.amazonaws.com:8083
+          export IMAGE=fastapi_app
+          export REPO=docker-hosted
+          docker login http://$NEXUS_HOST -u "${{ secrets.NEXUS_USERNAME }}" -p "${{ secrets.NEXUS_PASSWORD }}"
+          docker pull $NEXUS_HOST/$REPO/$IMAGE:latest
+          cd /home/ubuntu/store-api-devops
+          docker-compose down || true
+          docker-compose up -d --build
         EOF
