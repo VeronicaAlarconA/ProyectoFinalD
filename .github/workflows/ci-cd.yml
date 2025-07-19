@@ -10,11 +10,6 @@ jobs:
   ci_cd_deploy:
     runs-on: ubuntu-latest
 
-    env:
-      NEXUS_HOST: ${{ secrets.NEXUS_URL }}
-      NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-      NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -38,13 +33,13 @@ jobs:
 
       - name: Log in to Nexus Docker Registry
         run: |
-         echo "$NEXUS_PASSWORD" | docker login $NEXUS_HOST -u "$NEXUS_USERNAME" --password-stdin
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login http://${{ secrets.NEXUS_URL }} -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
 
       - name: Tag and Push to Nexus
         run: |
-          docker tag fastapi_app $NEXUS_HOST/fastapi_app:latest
-          docker push $NEXUS_HOST/fastapi_app:latest
- 
+          docker tag fastapi_app ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi_app:latest
+          docker push ${{ secrets.NEXUS_URL }}/docker-hosted/fastapi_app:latest
+
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.7.0
