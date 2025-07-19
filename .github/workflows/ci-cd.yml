@@ -26,7 +26,7 @@ jobs:
 
     - name: Log in to Nexus Docker Registry
       run: |
-       echo "${{ secrets.NEXUS_PASSWORD }}" | docker login http://ec2-3-91-144-167.compute-1.amazonaws.com:8083 -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+       echo "${{ secrets.NEXUS_PASSWORD }}" | docker login http://ec2-3-91-144-167.compute-1.amazonaws.com:8081 -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
 
 
     - name: Build Docker image
