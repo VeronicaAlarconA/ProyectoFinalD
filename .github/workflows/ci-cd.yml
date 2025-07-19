@@ -63,14 +63,17 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Setup SSH agent and add PEM key
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Deploy to EC2 via SSH with debug
+      - name: Create PEM key file
         run: |
-          ssh -vvv -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          chmod 600 key.pem
+
+      - name: Deploy to EC2 via SSH with PEM key
+        run: |
+          ssh -i key.pem -o StrictHostKeyChecking=no -vvv ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             docker pull ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]'):latest
             docker stop fastapi-app || true
             docker rm fastapi-app || true
