@@ -40,6 +40,7 @@ services:
     container_name: nexus
     ports:
       - "8081:8081"
+      - "8083:8083"
     volumes:
       - nexus-data:/nexus-data
     networks:
