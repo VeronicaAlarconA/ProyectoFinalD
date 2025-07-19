@@ -9,7 +9,6 @@ on:
   pull_request:
 
 jobs:
-
   test:
     runs-on: ubuntu-latest
     steps:
@@ -30,7 +29,6 @@ jobs:
       - name: Run tests
         run: pytest
 
-
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
@@ -45,20 +43,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
 
-      - name: Build and tag Docker image
+      - name: Build Docker image
         run: |
-          IMAGE_NAME=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
           IMAGE_TAG=${{ github.sha }}
           docker build -t $IMAGE_NAME:$IMAGE_TAG .
           docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
 
       - name: Push Docker image
         run: |
-          IMAGE_NAME=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
           IMAGE_TAG=${{ github.sha }}
           docker push $IMAGE_NAME:$IMAGE_TAG
           docker push $IMAGE_NAME:latest
-
 
   deploy:
     needs: build-and-push
@@ -68,7 +65,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Create PEM file
+      - name: Create PEM key file
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
@@ -76,13 +73,9 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -i key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << EOF
-            echo "${{ secrets.GHCR_PAT_EC2 }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
-            IMAGE_NAME=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-            docker pull \$IMAGE_NAME:latest
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker pull ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]'):latest
             docker stop fastapi-app || true
             docker rm fastapi-app || true
-            docker run -d --name fastapi-app -p 80:80 \$IMAGE_NAME:latest
+            docker run -d --name fastapi-app -p 80:80 ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]'):latest
           EOF
-
-      - name: Cleanup
-        run: rm -f key.pem
