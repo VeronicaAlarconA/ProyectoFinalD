@@ -44,7 +44,7 @@ jobs:
           NEXUS_HOST: ${{ secrets.EC2_HOST }}
         run: |
           docker tag fastapi_app $NEXUS_HOST:8083/fastapi_app:latest
-          docker push $NEXUS_HOST:8083/fastapi_app:latest
+          docker push $NEXUS_HOST:8081/fastapi_app:latest
 
 
       - name: Set up SSH
