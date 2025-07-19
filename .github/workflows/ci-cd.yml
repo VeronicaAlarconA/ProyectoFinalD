@@ -36,14 +36,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Login to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
 
-      - name: Build Docker image
+      - name: Build and tag Docker image
         run: |
           IMAGE_NAME=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
           IMAGE_TAG=${{ github.sha }}
@@ -65,7 +65,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Create PEM key file
+      - name: Create PEM file
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 600 key.pem
@@ -73,9 +73,17 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -i key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << EOF
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            echo "✅ Conectado a EC2"
+
+            echo "🔐 Login a GHCR"
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            echo "📦 Borrando contenedor anterior (si existe)"
+            docker rm -f fastapi-app || true
+
+            echo "⬇️ Pull de imagen más reciente"
             docker pull ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]'):latest
-            docker stop fastapi-app || true
-            docker rm fastapi-app || true
+
+            echo "🚀 Iniciando nuevo contenedor"
             docker run -d --name fastapi-app -p 80:80 ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]'):latest
           EOF
