@@ -1,58 +1,70 @@
-name: Build and push Docker image to Nexus
+ame: CI/CD Pipeline
 
 on:
   push:
     branches:
+      - develop
       - main
 
 jobs:
-  build-and-deploy:
+  ci_cd_deploy:
     runs-on: ubuntu-latest
 
     env:
-      IMAGE_NAME: fastapi_app
-      NEXUS_HOST: ec2-18-206-163-210.compute-1.amazonaws.com:8083
-      NEXUS_REPO: docker-hosted
+      NEXUS_HOST: ${{ secrets.NEXUS_URL }}
+      NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+      NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Log in to Nexus Docker Registry
-      run: |
-        echo "$NEXUS_PASSWORD" | docker login http://$NEXUS_HOST -u "$NEXUS_USERNAME" --password-stdin
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
 
-    - name: Build Docker image
-      run: |
-        docker build -t $IMAGE_NAME .
+      - name: Run tests
+        run: |
+          pytest
 
-    - name: Tag and Push to Nexus
-      run: |
-        docker tag $IMAGE_NAME $NEXUS_HOST/$NEXUS_REPO/$IMAGE_NAME:latest
-        docker push $NEXUS_HOST/$NEXUS_REPO/$IMAGE_NAME:latest
+      - name: Build Docker image
+        run: |
+          docker build -t fastapi_app .
 
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+      - name: Log in to Nexus Docker Registry
+        run: |
+         echo "$NEXUS_PASSWORD" | docker login $NEXUS_HOST -u "$NEXUS_USERNAME" --password-stdin
 
-    - name: Add EC2 to known_hosts
-      run: |
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+      - name: Tag and Push to Nexus
+        run: |
+          docker tag fastapi_app $NEXUS_HOST/fastapi_app:latest
+          docker push $NEXUS_HOST/fastapi_app:latest
+ 
 
-    - name: Copy project files to EC2
-      run: |
-        rsync -avz -e ssh ./ ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/store-api-devops
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-    - name: Deploy on EC2
-      run: |
-        ssh ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-        cd /home/ubuntu/store-api-devops
-        docker login http://$NEXUS_HOST -u $NEXUS_USERNAME -p $NEXUS_PASSWORD
-        docker pull $NEXUS_HOST/$NEXUS_REPO/$IMAGE_NAME:latest
-        docker-compose down
-        docker-compose up -d --build
-        EOF
+      - name: Add EC2 to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy project files to EC2
+        run: |
+          rsync -avz -e ssh ./ ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/store-api-devops
+
+      - name: Deploy on EC2
+        run: |
+          ssh ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          cd /home/ubuntu/store-api-devops
+          docker login http://$NEXUS_HOST:8083 -u $NEXUS_USERNAME -p $NEXUS_PASSWORD
+          docker pull $NEXUS_HOST:8083/docker-hosted/fastapi_app:latest
+          docker-compose down
+          docker-compose up -d --build
+          EOF
