@@ -2,9 +2,11 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from fastapi.testclient import TestClient
 from app import app
 
 client = TestClient(app)
+
 
 def test_add_client():
     response = client.post("/clients", json={"name": "Cliente Test"})
