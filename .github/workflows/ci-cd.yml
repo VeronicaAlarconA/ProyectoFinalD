@@ -1,14 +1,11 @@
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches:
-      - develop
-      - main
-
 jobs:
   ci_cd_deploy:
     runs-on: ubuntu-latest
+
+    env:
+      NEXUS_HOST: ${{ secrets.EC2_HOST }}
+      NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+      NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -32,20 +29,13 @@ jobs:
           docker build -t fastapi_app .
 
       - name: Log in to Nexus Docker Registry
-        env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-          NEXUS_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          echo $NEXUS_PASSWORD | docker login ${{ secrets.EC2_HOST }}:8083 -u $NEXUS_USERNAME --password-stdin
+          echo "$NEXUS_PASSWORD" | docker login http://$NEXUS_HOST:8083 -u "$NEXUS_USERNAME" --password-stdin
 
       - name: Tag and Push to Nexus
-        env:
-          NEXUS_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          docker tag fastapi_app ${{ secrets.EC2_HOST }}:8083/fastapi_app:latest
-          docker push ${{ secrets.EC2_HOST }}:8083/fastapi_app:latest
-
+          docker tag fastapi_app $NEXUS_HOST:8083/docker-hosted/fastapi_app:latest
+          docker push $NEXUS_HOST:8083/docker-hosted/fastapi_app:latest
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.7.0
