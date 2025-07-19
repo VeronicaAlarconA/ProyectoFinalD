@@ -36,7 +36,7 @@ jobs:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
         run: |
-          echo $NEXUS_PASSWORD | docker login your-nexus-domain:8083 -u $NEXUS_USERNAME --password-stdin
+          echo ${{ secrets.NEXUS_PASSWORD }} | docker login ${{ secrets.EC2_HOST }}:8083 -u ${{ secrets.NEXUS_USERNAME }} --password-stdin
 
       - name: Tag and Push to Nexus
         run: |
