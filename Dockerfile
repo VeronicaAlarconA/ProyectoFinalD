@@ -18,4 +18,4 @@ COPY . .
 EXPOSE 5000
 
 # Usa uvicorn para correr la app (más eficiente que python run.py)
-CMD ["uvicorn", "run:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
